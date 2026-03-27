@@ -82,6 +82,13 @@ load_gcs_to_bigquery(
     table_name="raw_spotify_charts",
 )
 
+# --- Spotify Charts Historical ---
+load_gcs_to_bigquery(
+    client,
+    gcs_uri=f"gs://{BUCKET}/raw/spotify_charts_historical/spotify_charts_historical.parquet",
+    table_name="raw_spotify_charts_historical",
+)
+
 # --- Podcast Shows (dimension table) ---
 load_gcs_to_bigquery(
     client,

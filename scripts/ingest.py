@@ -39,6 +39,7 @@ TEMP_DIR = Path("./temp_data")  # local staging folder, gets cleaned up
 # format below is "datasetkey": "kaggle_id"
 KAGGLE_DATASETS = {
     "spotify_charts": "asaniczka/top-spotify-songs-in-73-countries-daily-updated",
+    "spotify_charts_historical": "jfreyberg/spotify-chart-data",
     "podcast_reviews": "thoughtvector/podcastreviews",
     "podcast_charts": "daniilmiheev/top-spotify-podcasts-daily-updated",
 }
@@ -47,6 +48,7 @@ KAGGLE_DATASETS = {
 # e.g. gs://audio-trends-raw-data/raw/spotify_charts/data.parquet
 GCS_PREFIXES = {
     "spotify_charts": "raw/spotify_charts",
+    "spotify_charts_historical": "raw/spotify_charts_historical",
     "podcast_reviews": "raw/podcast_reviews",
     "podcast_charts": "raw/podcast_charts",
 }
@@ -117,6 +119,33 @@ def process_spotify_charts(data_dir: Path) -> pd.DataFrame:
 
     before_count = len(df)
     df = df[(df["snapshot_date"] >= START_DATE) & (df["snapshot_date"] <= END_DATE)]
+    print(f"  Filtered to {START_DATE} – {END_DATE}: {len(df):,} rows (dropped {before_count - len(df):,})")
+
+    return df
+
+
+def process_spotify_charts_historical(data_dir: Path) -> pd.DataFrame:
+    """
+    Read the Spotify Charts Historical dataset (2013-2023).
+    Has columns: date, country, position, streams, track_id,
+    artists, artist_genres, duration, explicit, name.
+    Filter to 2022-2023 to overlap with podcast reviews.
+    """
+    csv_files = list(data_dir.glob("*.csv"))
+    if not csv_files:
+        raise FileNotFoundError(f"No CSV files found in {data_dir}")
+
+    print(f"  Reading {csv_files[0].name}...")
+    df = pd.read_csv(csv_files[0], low_memory=False)
+
+    print(f"  Raw shape: {df.shape[0]:,} rows × {df.shape[1]} columns")
+    print(f"  Columns: {list(df.columns)}")
+
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = df.dropna(subset=["date"])
+
+    before_count = len(df)
+    df = df[(df["date"] >= START_DATE) & (df["date"] <= END_DATE)]
     print(f"  Filtered to {START_DATE} – {END_DATE}: {len(df):,} rows (dropped {before_count - len(df):,})")
 
     return df
@@ -295,15 +324,24 @@ def main():
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
     # --- Spotify Charts ---
-    print("\n[1/3] Spotify Charts (73 Countries)")
+    print("\n[1/4] Spotify Charts (73 Countries)")
     print("-" * 40)
     data_dir = download_dataset("spotify_charts", KAGGLE_DATASETS["spotify_charts"])
     df_spotify = process_spotify_charts(data_dir)
     parquet_path = save_to_parquet(df_spotify, "spotify_charts")
     upload_to_gcs(parquet_path, GCS_PREFIXES["spotify_charts"], "spotify_charts.parquet")
 
+
+    # --- Spotify Charts Historical ---
+    print("\n[2/4] Spotify Charts Historical (2013-2023)")
+    print("-" * 40)
+    data_dir = download_dataset("spotify_charts_historical", KAGGLE_DATASETS["spotify_charts_historical"])
+    df_spotify_hist = process_spotify_charts_historical(data_dir)
+    parquet_path = save_to_parquet(df_spotify_hist, "spotify_charts_historical")
+    upload_to_gcs(parquet_path, GCS_PREFIXES["spotify_charts_historical"], "spotify_charts_historical.parquet")
+
     # --- Podcast Reviews ---
-    print("\n[2/3] Podcast Reviews")
+    print("\n[3/4] Podcast Reviews")
     print("-" * 40)
     data_dir = download_dataset("podcast_reviews", KAGGLE_DATASETS["podcast_reviews"])
     podcast_dfs = process_podcast_reviews(data_dir)
@@ -316,7 +354,7 @@ def main():
     upload_to_gcs(parquet_path, GCS_PREFIXES["podcast_reviews"], "podcast_reviews.parquet")
 
     # --- Podcast Charts ---
-    print("\n[3/3] Top Spotify Podcast Episodes")
+    print("\n[4/4] Top Spotify Podcast Episodes")
     print("-" * 40)
     data_dir = download_dataset("podcast_charts", KAGGLE_DATASETS["podcast_charts"])
     df_podcast_charts = process_podcast_charts(data_dir)
@@ -330,6 +368,7 @@ def main():
     print(f"  gs://{GCS_BUCKET_NAME}/raw/podcast_reviews/podcast_shows.parquet")
     print(f"  gs://{GCS_BUCKET_NAME}/raw/podcast_reviews/podcast_reviews.parquet")
     print(f"  gs://{GCS_BUCKET_NAME}/raw/podcast_charts/podcast_charts.parquet")
+    print(f"  gs://{GCS_BUCKET_NAME}/raw/spotify_charts_historical/spotify_charts_historical.parquet")
     print("=" * 60)
 
     # Clean up temp files

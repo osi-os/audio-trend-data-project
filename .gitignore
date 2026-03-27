@@ -229,3 +229,6 @@ temp_data/
 logs/runs
 logs/*.log
 *.py[cod]
+.streamlit/
+.streamlit/secrets.toml
+service-cred.json
