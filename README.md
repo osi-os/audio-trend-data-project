@@ -1,4 +1,4 @@
-# audio-trend-pipeline
+# audio-trend-data-project
 
 Exploring content consumption patterns across music and podcasts on streaming platforms.
 
