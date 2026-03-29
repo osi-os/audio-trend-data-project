@@ -3,6 +3,10 @@ name: audio_trends.stg_spotify_charts
 type: bq.sql
 materialization:
   type: table
+  strategy: create+replace
+  partition_by: snapshot_date
+  cluster_by:
+    - country
 
 depends:
   - audio_trends.load_raw_data

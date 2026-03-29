@@ -62,6 +62,16 @@ All datasets are sourced from Kaggle and filtered to a 2022-2025 window:
 | `fct_music_podcast_correlation` | Music genre signals correlated with podcast category metrics (15-month overlap) |
 | `fct_audio_ecosystem` | Unified timeline combining both analysis windows with music-to-podcast ratios |
 
+## Partitioning & Clustering Strategy
+
+The staging table `stg_spotify_charts` is partitioned by `snapshot_date` and clustered by `country`. Here's why:
+
+**Partitioning by `snapshot_date`:** This is the most common filter in downstream queries — nearly every mart model aggregates by month or filters to a date range. Partitioning by date means BigQuery only scans the relevant date partitions instead of the entire table, significantly reducing query cost and runtime on 2M+ rows.
+
+**Clustering by `country`:** After date, country is the second most frequent filter (e.g. "show me US trends" or "compare BR vs JP"). Clustering sorts data within each partition by country, so queries filtering on specific countries skip even more data.
+
+The raw tables (`raw_spotify_charts`, `raw_podcast_reviews`, etc.) are intentionally **not** partitioned. Date columns arrived as nanosecond integers from the Parquet files, which BigQuery cannot partition on directly. The staging layer casts these to proper `DATE` types, making it the correct place to apply partitioning. This follows the principle of keeping raw tables as faithful copies of the source data, with structure and optimization applied in the transformation layer.
+
 ## Dashboard
 
 The Streamlit app visualizes:

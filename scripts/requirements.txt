@@ -1,0 +1,4 @@
+kaggle
+pandas
+pyarrow
+google-cloud-storage
