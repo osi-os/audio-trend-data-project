@@ -284,7 +284,7 @@ COUNTRY_NAMES = {
     "VE": "VE – Venezuela", "VN": "VN – Vietnam", "ZA": "ZA – South Africa",
 }
 
-raw_countries = sorted([c for c in df_music["country"].unique() if c is not None])
+raw_countries = sorted([c for c in df_music["country"].unique() if isinstance(c, str)])
 display_options = [COUNTRY_NAMES.get(c, c) for c in raw_countries]
 
 # Defaults with full names
